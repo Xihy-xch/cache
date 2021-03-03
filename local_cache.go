@@ -14,7 +14,11 @@ type item struct {
 	expiration time.Time
 }
 
-func (i *item) getDefaultOptions() *Options {
+func (i *item) isExpired() bool {
+	return time.Now().After(i.expiration)
+}
+
+func getItemDefaultOptions() *Options {
 	return &Options{
 		expiration: 10 * time.Second,
 	}
@@ -27,6 +31,22 @@ type Cache interface {
 	Clean()
 }
 
+func NewCache(opts ...OptionsFn) Cache {
+	o := getCacheDefaultOptions()
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	switch o.mode {
+	case LRU:
+		return newLRUCache(o)
+	case Default:
+		return newDefaultCache(o)
+	default:
+		return newDefaultCache(o)
+	}
+}
+
 type DefaultCache struct {
 	valueMap map[string]item
 	options  *Options
@@ -35,24 +55,21 @@ type DefaultCache struct {
 	ticker   *time.Ticker
 }
 
-func NewCache(opts ...OptionsFn) *DefaultCache {
+func newDefaultCache(options *Options) Cache {
+
 	c := &DefaultCache{
 		valueMap: make(map[string]item),
 		rwMutex:  new(sync.RWMutex),
 		sf:       new(singleflight.Group),
 		ticker:   time.NewTicker(5 * time.Second),
+		options:  options,
 	}
 
-	o := c.getDefaultOptions()
-	for _, opt := range opts {
-		opt(o)
-	}
-	c.options = o
 	go c.Clean()
 	return c
 }
 
-func (d *DefaultCache) getDefaultOptions() *Options {
+func getCacheDefaultOptions() *Options {
 	return &Options{
 		expiration: 10 * time.Second,
 		maxSum:     1024,
@@ -60,7 +77,7 @@ func (d *DefaultCache) getDefaultOptions() *Options {
 }
 
 func (d *DefaultCache) Set(key string, val interface{}, opts ...OptionsFn) {
-	o := d.getDefaultOptions()
+	o := getCacheDefaultOptions()
 
 	for _, opt := range opts {
 		opt(o)
@@ -97,29 +114,19 @@ func (d *DefaultCache) Delete(key string) {
 	delete(d.valueMap, key)
 }
 
-// @todo error处理
 func (d *DefaultCache) Clean() {
 	var err error
 	for {
 		<-d.ticker.C
-		fmt.Println("开始清理")
-		switch d.options.cleanMode {
-		case Default:
-			err = d.defaultClean()
-		case LRU:
-			err = d.lruClean()
-		default:
-			err = d.defaultClean()
-		}
+		err = d.defaultClean()
 		fmt.Println(err)
 	}
 }
 
 func (d *DefaultCache) defaultClean() error {
-	now := time.Now()
 
 	for key, item := range d.valueMap {
-		if now.After(item.expiration) {
+		if item.isExpired() {
 			delete(d.valueMap, key)
 		}
 	}

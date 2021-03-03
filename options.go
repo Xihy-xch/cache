@@ -4,14 +4,14 @@ import "time"
 
 type Options struct {
 	expiration time.Duration
-	cleanMode  CleanMode
+	mode       Mode
 	maxSum     int64
 }
 
-type CleanMode int8
+type Mode int8
 
 const (
-	Default CleanMode = iota
+	Default Mode = iota
 	LRU
 )
 
@@ -23,9 +23,9 @@ func WithTimeout(expiration time.Duration) OptionsFn {
 	}
 }
 
-func WithCleanMode(cleanMode CleanMode) OptionsFn {
+func WithMode(mode Mode) OptionsFn {
 	return func(opts *Options) {
-		opts.cleanMode = cleanMode
+		opts.mode = mode
 	}
 }
 
