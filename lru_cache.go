@@ -105,16 +105,14 @@ func (n *NodeList) delete(node *Node) {
 type LRUCache struct {
 	valueMap map[string]*Node
 	options  *Options
-	rwMutex  *sync.RWMutex
-	sf       *singleflight.Group
+	rwMutex  sync.RWMutex
+	sf       singleflight.Group
 	list     *NodeList
 }
 
 func newLRUCache(options *Options) *LRUCache {
 	return &LRUCache{
 		valueMap: make(map[string]*Node),
-		rwMutex:  new(sync.RWMutex),
-		sf:       new(singleflight.Group),
 		options:  options,
 		list:     NewNodeList(),
 	}

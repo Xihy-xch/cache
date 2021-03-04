@@ -40,8 +40,6 @@ func NewCache(opts ...OptionsFn) Cache {
 	switch o.mode {
 	case LRU:
 		return newLRUCache(o)
-	case Default:
-		return newDefaultCache(o)
 	default:
 		return newDefaultCache(o)
 	}
@@ -50,8 +48,8 @@ func NewCache(opts ...OptionsFn) Cache {
 type DefaultCache struct {
 	valueMap map[string]item
 	options  *Options
-	rwMutex  *sync.RWMutex
-	sf       *singleflight.Group
+	rwMutex  sync.RWMutex
+	sf       singleflight.Group
 	ticker   *time.Ticker
 }
 
@@ -59,8 +57,6 @@ func newDefaultCache(options *Options) Cache {
 
 	c := &DefaultCache{
 		valueMap: make(map[string]item),
-		rwMutex:  new(sync.RWMutex),
-		sf:       new(singleflight.Group),
 		ticker:   time.NewTicker(5 * time.Second),
 		options:  options,
 	}
