@@ -4,6 +4,7 @@ import (
 	"errors"
 	"golang.org/x/sync/singleflight"
 	"sync"
+	"time"
 )
 
 type Node struct {
@@ -96,6 +97,11 @@ func (n *NodeList) moveToBack(node *Node) {
 	n.end.pre = node
 }
 
+func (n *NodeList) delete(node *Node) {
+	node.next.pre = node.pre
+	node.pre.next = node.next
+}
+
 type LRUCache struct {
 	valueMap map[string]*Node
 	options  *Options
@@ -105,7 +111,13 @@ type LRUCache struct {
 }
 
 func newLRUCache(options *Options) *LRUCache {
-	return &LRUCache{}
+	return &LRUCache{
+		valueMap: make(map[string]*Node),
+		rwMutex:  new(sync.RWMutex),
+		sf:       new(singleflight.Group),
+		options:  options,
+		list:     NewNodeList(),
+	}
 }
 
 func (l *LRUCache) Get(key string) (interface{}, error) {
@@ -133,15 +145,50 @@ func (l *LRUCache) Get(key string) (interface{}, error) {
 	return res.val, err
 }
 
-// @todo
 func (l *LRUCache) Set(key string, val interface{}, opts ...OptionsFn) {
-	panic("implement me")
+	if int64(len(l.valueMap)) > l.options.maxSum {
+		l.Clean()
+	}
+
+	o := getItemDefaultOptions()
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	node := NewNode(key, item{
+		value:      val,
+		expiration: time.Now().Add(o.expiration),
+	})
+
+	l.list.pushFront(node)
+
+	l.rwMutex.Lock()
+	defer l.rwMutex.Unlock()
+	l.valueMap[key] = node
 }
 
 func (l *LRUCache) Delete(key string) {
-	panic("implement me")
+	l.rwMutex.Lock()
+	defer l.rwMutex.Unlock()
+	if node, ok := l.valueMap[key]; ok {
+		l.list.delete(node)
+		delete(l.valueMap, key)
+	}
 }
 
 func (l *LRUCache) Clean() {
-	panic("implement me")
+	l.rwMutex.Lock()
+	defer l.rwMutex.Unlock()
+	remain := l.getRemain()
+
+	for remain > 0 {
+		node := l.list.end.pre
+		l.list.delete(node)
+		delete(l.valueMap, node.key)
+		remain--
+	}
+}
+
+func (l *LRUCache) getRemain() int {
+	return len(l.valueMap) / 2
 }
