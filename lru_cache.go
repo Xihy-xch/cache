@@ -1,7 +1,6 @@
 package local_cache
 
 import (
-	"errors"
 	"fmt"
 	"golang.org/x/sync/singleflight"
 	"sync"
@@ -128,7 +127,7 @@ func (l *LRUCache) Get(key string) (interface{}, error) {
 			return val, nil
 		}
 
-		return nil, errors.New("该key不存在")
+		return nil, ErrKeyNotExist
 	})
 
 	if err != nil {
@@ -136,12 +135,12 @@ func (l *LRUCache) Get(key string) (interface{}, error) {
 	}
 
 	if _, ok := node.(*Node); !ok {
-		return nil, errors.New("该key断言失败")
+		return nil, ErrKeyValue
 	}
 	res := node.(*Node)
 
 	if res.val.isExpired() {
-		return nil, errors.New("该key已过期")
+		return nil, ErrKeyExpired
 	}
 
 	l.list.moveToFront(res)

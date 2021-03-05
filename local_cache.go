@@ -1,7 +1,6 @@
 package local_cache
 
 import (
-	"errors"
 	"fmt"
 	"golang.org/x/sync/singleflight"
 	"sync"
@@ -95,7 +94,7 @@ func (d *DefaultCache) Get(key string) (interface{}, error) {
 			return val, nil
 		}
 
-		return nil, errors.New("该key不存在")
+		return nil, ErrKeyNotExist
 	})
 
 	if err != nil {
@@ -103,12 +102,12 @@ func (d *DefaultCache) Get(key string) (interface{}, error) {
 	}
 
 	if _, ok := val.(item); !ok {
-		return nil, errors.New("该key断言失败")
+		return nil, ErrKeyValue
 	}
 
 	res := val.(item)
 	if res.isExpired() {
-		return nil, errors.New("该key已过期")
+		return nil, ErrKeyExpired
 	}
 
 	return res, nil
