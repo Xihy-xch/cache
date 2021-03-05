@@ -2,6 +2,7 @@ package local_cache
 
 import (
 	"errors"
+	"fmt"
 	"golang.org/x/sync/singleflight"
 	"sync"
 	"time"
@@ -103,11 +104,12 @@ func (n *NodeList) delete(node *Node) {
 }
 
 type LRUCache struct {
-	valueMap map[string]*Node
-	options  *Options
-	rwMutex  sync.RWMutex
-	sf       singleflight.Group
-	list     *NodeList
+	valueMap  map[string]*Node
+	options   *Options
+	rwMutex   sync.RWMutex
+	sf        singleflight.Group
+	list      *NodeList
+	cleanFLag bool
 }
 
 func newLRUCache(options *Options) *LRUCache {
@@ -129,6 +131,10 @@ func (l *LRUCache) Get(key string) (interface{}, error) {
 		return nil, errors.New("该key不存在")
 	})
 
+	if err != nil {
+		return nil, err
+	}
+
 	if _, ok := node.(*Node); !ok {
 		return nil, errors.New("该key断言失败")
 	}
@@ -140,14 +146,10 @@ func (l *LRUCache) Get(key string) (interface{}, error) {
 
 	l.list.moveToFront(res)
 
-	return res.val, err
+	return res.val, nil
 }
 
 func (l *LRUCache) Set(key string, val interface{}, opts ...OptionsFn) {
-	if int64(len(l.valueMap)) > l.options.maxSum {
-		l.Clean()
-	}
-
 	o := getItemDefaultOptions()
 	for _, opt := range opts {
 		opt(o)
@@ -157,11 +159,14 @@ func (l *LRUCache) Set(key string, val interface{}, opts ...OptionsFn) {
 		value:      val,
 		expiration: time.Now().Add(o.expiration),
 	})
-
-	l.list.pushFront(node)
+	if int64(len(l.valueMap)) > l.options.maxSum && !l.isCleanIng(){
+		l.Clean()
+	}
+	fmt.Println(len(l.valueMap))
 
 	l.rwMutex.Lock()
 	defer l.rwMutex.Unlock()
+	l.list.pushFront(node)
 	l.valueMap[key] = node
 }
 
@@ -177,7 +182,11 @@ func (l *LRUCache) Delete(key string) {
 func (l *LRUCache) Clean() {
 	l.rwMutex.Lock()
 	defer l.rwMutex.Unlock()
+
+	l.cleanFLag = true
+
 	remain := l.getRemain()
+	fmt.Println("开始清理")
 
 	for remain > 0 {
 		node := l.list.end.pre
@@ -185,8 +194,16 @@ func (l *LRUCache) Clean() {
 		delete(l.valueMap, node.key)
 		remain--
 	}
+	l.cleanFLag = false
 }
 
 func (l *LRUCache) getRemain() int {
 	return len(l.valueMap) / 2
+}
+
+func (l *LRUCache) isCleanIng() bool {
+	return l.cleanFLag
+}
+
+func (l *LRUCache) Close() {
 }

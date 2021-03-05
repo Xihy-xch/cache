@@ -3,7 +3,6 @@ package local_cache
 import (
 	"errors"
 	"fmt"
-	lru "github.com/hashicorp/golang-lru"
 	"golang.org/x/sync/singleflight"
 	"sync"
 	"time"
@@ -29,6 +28,7 @@ type Cache interface {
 	Set(key string, val interface{}, opts ...OptionsFn)
 	Delete(key string)
 	Clean()
+	Close()
 }
 
 func NewCache(opts ...OptionsFn) Cache {
@@ -98,10 +98,20 @@ func (d *DefaultCache) Get(key string) (interface{}, error) {
 		return nil, errors.New("该key不存在")
 	})
 
-	if res, ok := val.(item); ok {
-		return res.value, nil
+	if err != nil {
+		return nil, err
 	}
-	return nil, err
+
+	if _, ok := val.(item); !ok {
+		return nil, errors.New("该key断言失败")
+	}
+
+	res := val.(item)
+	if res.isExpired() {
+		return nil, errors.New("该key已过期")
+	}
+
+	return res, nil
 }
 
 func (d *DefaultCache) Delete(key string) {
@@ -120,7 +130,7 @@ func (d *DefaultCache) Clean() {
 }
 
 func (d *DefaultCache) defaultClean() error {
-
+	fmt.Println("开始清理")
 	for key, item := range d.valueMap {
 		if item.isExpired() {
 			delete(d.valueMap, key)
@@ -130,13 +140,8 @@ func (d *DefaultCache) defaultClean() error {
 	return nil
 }
 
-func (d *DefaultCache) lruClean() error {
-	l, _ := lru.New(128)
-	for i := 0; i < 256; i++ {
-		l.Add(i, nil)
-	}
-	if l.Len() != 128 {
-		panic(fmt.Sprintf("bad len: %v", l.Len()))
-	}
-	return nil
+
+func (d *DefaultCache) Close() {
+	d.ticker.Stop()
 }
+

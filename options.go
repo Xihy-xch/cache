@@ -17,7 +17,7 @@ const (
 
 type OptionsFn func(opts *Options)
 
-func WithTimeout(expiration time.Duration) OptionsFn {
+func WithExpiration(expiration time.Duration) OptionsFn {
 	return func(opts *Options) {
 		opts.expiration = expiration
 	}
