@@ -50,6 +50,7 @@ type DefaultCache struct {
 	rwMutex  sync.RWMutex
 	sf       singleflight.Group
 	ticker   *time.Ticker
+	stop     chan int
 }
 
 func newDefaultCache(options *Options) Cache {
@@ -58,6 +59,7 @@ func newDefaultCache(options *Options) Cache {
 		valueMap: make(map[string]item),
 		ticker:   time.NewTicker(5 * time.Second),
 		options:  options,
+		stop:     make(chan int),
 	}
 
 	go c.Clean()
@@ -122,9 +124,14 @@ func (d *DefaultCache) Delete(key string) {
 func (d *DefaultCache) Clean() {
 	var err error
 	for {
-		<-d.ticker.C
-		err = d.defaultClean()
-		fmt.Println(err)
+		select {
+		case <-d.stop:
+			return
+		case <-d.ticker.C:
+			<-d.ticker.C
+			err = d.defaultClean()
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -139,8 +146,7 @@ func (d *DefaultCache) defaultClean() error {
 	return nil
 }
 
-
 func (d *DefaultCache) Close() {
+	d.stop <- 1
 	d.ticker.Stop()
 }
-
