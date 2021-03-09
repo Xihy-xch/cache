@@ -7,6 +7,10 @@ import (
 	"time"
 )
 
+var (
+	sf singleflight.Group
+)
+
 type item struct {
 	value      interface{}
 	expiration time.Time
@@ -16,65 +20,39 @@ func (i *item) isExpired() bool {
 	return time.Now().After(i.expiration)
 }
 
-func getItemDefaultOptions() *Options {
-	return &Options{
-		expiration: 10 * time.Second,
-	}
-}
-
 type Cache interface {
-	Get(key string) (interface{}, error)
+	Get(key string, opts ...OptionsFn) (interface{}, error)
 	Set(key string, val interface{}, opts ...OptionsFn)
 	Delete(key string)
 	Clean()
 	Close()
 }
 
-func NewCache(opts ...OptionsFn) Cache {
-	o := getCacheDefaultOptions()
-	for _, opt := range opts {
-		opt(o)
-	}
-
-	switch o.mode {
-	case LRU:
-		return newLRUCache(o)
-	default:
-		return newDefaultCache(o)
-	}
+func NewCache(cache Cache) Cache {
+	return cache
 }
 
 type DefaultCache struct {
-	valueMap map[string]item
-	options  *Options
-	rwMutex  sync.RWMutex
-	sf       singleflight.Group
-	ticker   *time.Ticker
-	stop     chan int
+	valueMap    map[string]item
+	rwMutex     sync.RWMutex
+	cleanTicker *time.Ticker
+	stop        chan int
 }
 
-func newDefaultCache(options *Options) Cache {
+func NewDefaultCache(cleanTicker *time.Ticker) *DefaultCache {
 
 	c := &DefaultCache{
-		valueMap: make(map[string]item),
-		ticker:   time.NewTicker(5 * time.Second),
-		options:  options,
-		stop:     make(chan int),
+		valueMap:    make(map[string]item),
+		cleanTicker: cleanTicker,
+		stop:        make(chan int),
 	}
 
 	go c.Clean()
 	return c
 }
 
-func getCacheDefaultOptions() *Options {
-	return &Options{
-		expiration: 10 * time.Second,
-		maxSum:     1024,
-	}
-}
-
 func (d *DefaultCache) Set(key string, val interface{}, opts ...OptionsFn) {
-	o := getCacheDefaultOptions()
+	o := getDefaultOptions()
 
 	for _, opt := range opts {
 		opt(o)
@@ -88,31 +66,48 @@ func (d *DefaultCache) Set(key string, val interface{}, opts ...OptionsFn) {
 	}
 }
 
-func (d *DefaultCache) Get(key string) (interface{}, error) {
-	val, err, _ := d.sf.Do(key, func() (interface{}, error) {
-		d.rwMutex.RLock()
-		defer d.rwMutex.RUnlock()
-		if val, exist := d.valueMap[key]; exist {
-			return val, nil
-		}
+func (d *DefaultCache) Get(key string, opts ...OptionsFn) (interface{}, error) {
+	o := getDefaultOptions()
 
-		return nil, ErrKeyNotExist
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	val, err := d.doGet(key)
+	if err == nil {
+		return val, nil
+	}
+
+	if o.getter == nil {
+		return nil, err
+	}
+
+	val, err, _ = sf.Do(key, func() (interface{}, error) {
+		val, err := o.getter.Get(key)
+		return val, err
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	if _, ok := val.(item); !ok {
-		return nil, ErrKeyValue
-	}
+	return val, nil
+}
 
-	res := val.(item)
-	if res.isExpired() {
+func (d *DefaultCache) doGet(key string) (interface{}, error) {
+	d.rwMutex.RLock()
+	defer d.rwMutex.RUnlock()
+	var (
+		val   item
+		exist bool
+	)
+	if val, exist = d.valueMap[key]; !exist {
+		return nil, ErrKeyNotExist
+	}
+	if val.isExpired() {
 		return nil, ErrKeyExpired
 	}
 
-	return res, nil
+	return val.value, nil
 }
 
 func (d *DefaultCache) Delete(key string) {
@@ -122,31 +117,27 @@ func (d *DefaultCache) Delete(key string) {
 }
 
 func (d *DefaultCache) Clean() {
-	var err error
 	for {
 		select {
 		case <-d.stop:
 			return
-		case <-d.ticker.C:
-			<-d.ticker.C
-			err = d.defaultClean()
-			fmt.Println(err)
+		case <-d.cleanTicker.C:
+			d.defaultClean()
 		}
 	}
 }
 
-func (d *DefaultCache) defaultClean() error {
+func (d *DefaultCache) defaultClean() {
 	fmt.Println("开始清理")
 	for key, item := range d.valueMap {
 		if item.isExpired() {
 			delete(d.valueMap, key)
 		}
 	}
-
-	return nil
 }
 
 func (d *DefaultCache) Close() {
+	d.cleanTicker.Stop()
 	d.stop <- 1
-	d.ticker.Stop()
+	close(d.stop)
 }

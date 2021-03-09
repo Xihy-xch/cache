@@ -65,7 +65,7 @@ func TestLRUCache_Get(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	d := NewCache(WithMode(LRU), WithMaxSum(5))
+	d := NewCache(NewLRUCache(10))
 	for i := 0; i < 10; i++ {
 		d.Set("test_key"+strconv.Itoa(i), "test_val", WithExpiration(10*time.Second))
 	}
@@ -84,7 +84,7 @@ func TestLRUCache_Get(t *testing.T) {
 							ch <- i
 							return
 						}
-						if !reflect.DeepEqual(got.(item).value, tt.want) {
+						if !reflect.DeepEqual(got, tt.want) {
 							t.Errorf("Get() got = %v, want %v", got, tt.want)
 							ch <- i
 						}

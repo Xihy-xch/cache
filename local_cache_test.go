@@ -26,7 +26,7 @@ func TestDefaultCache_Get(t *testing.T) {
 			wantErr: false,
 		},
 	}
-	d := NewCache(WithMode(Default))
+	d := NewCache(NewDefaultCache(time.NewTicker(5 * time.Second)))
 	for i := 0; i < 10; i++ {
 		i := i
 		go func() {
@@ -46,13 +46,33 @@ func TestDefaultCache_Get(t *testing.T) {
 						ch <- 1
 						return
 					}
-					if !reflect.DeepEqual(got.(item).value, tt.want) {
+					if !reflect.DeepEqual(got, tt.want) {
 						t.Errorf("Get() got = %v, want %v", got, tt.want)
 						ch <- 1
 					}
 				}()
 			}
 			<-ch
+		})
+	}
+}
+
+func TestNewCache(t *testing.T) {
+	type args struct {
+		cache Cache
+	}
+	tests := []struct {
+		name string
+		args args
+		want Cache
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewCache(NewDefaultCache(time.NewTicker(5 * time.Second))); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewCache() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
