@@ -17,13 +17,6 @@ type Options struct {
 	getter     Getter
 }
 
-type Mode int8
-
-const (
-	Default Mode = iota
-	LRU
-)
-
 type OptionsFn func(opts *Options)
 
 func WithExpiration(expiration time.Duration) OptionsFn {

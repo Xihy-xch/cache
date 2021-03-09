@@ -96,3 +96,41 @@ func TestLRUCache_Get(t *testing.T) {
 		})
 	}
 }
+
+func TestLRUCache_Get1(t *testing.T) {
+	type args struct {
+		key  string
+		opts []OptionsFn
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    interface{}
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+		{
+			name: "正常流程",
+			args: args{
+				key: "test_key",
+			},
+			want:    "test_val",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := NewCache(NewLRUCache(10))
+			got, err := l.Get(tt.args.key, WithGetter(GetterFunc(func(key string) (interface{}, error) {
+				return "test_val", nil
+			})))
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Get() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
