@@ -34,6 +34,5 @@ func (a *App) Start() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	// 对外提供服务
 	select {}
 }
