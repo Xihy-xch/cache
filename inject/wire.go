@@ -3,17 +3,17 @@
 package inject
 
 import (
+	"cache"
+	"cache/iface"
+	"cache/local_cache"
 	"github.com/google/wire"
-	local_cache "local-cache"
-	"local-cache/iface"
-	local_cache2 "local-cache/local_cache"
 )
 
-func InitApp(maxSum int64) (app *local_cache.App, cleanup func(), err error) {
+func InitApp(maxSum int64) (app *cache.App, cleanup func(), err error) {
 	wire.Build(
-		local_cache2.NewLRUCache,
+		local_cache.NewLRUCache,
 		iface.NewCacheSrv,
-		local_cache.NewApp,
+		cache.NewApp,
 	)
-	return &local_cache.App{}, nil, nil
+	return &cache.App{}, nil, nil
 }

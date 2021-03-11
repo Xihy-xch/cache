@@ -6,17 +6,17 @@
 package inject
 
 import (
-	"local-cache"
-	"local-cache/iface"
-	local_cache2 "local-cache/local_cache"
+	"cache"
+	"cache/iface"
+	"cache/local_cache"
 )
 
 // Injectors from wire.go:
 
-func InitApp(maxSum int64) (*local_cache.App, func(), error) {
-	lruCache := local_cache2.NewLRUCache(maxSum)
+func InitApp(maxSum int64) (*cache.App, func(), error) {
+	lruCache := local_cache.NewLRUCache(maxSum)
 	cacheSrv := iface.NewCacheSrv(lruCache)
-	app := local_cache.NewApp(cacheSrv)
+	app := cache.NewApp(cacheSrv)
 	return app, func() {
 	}, nil
 }
