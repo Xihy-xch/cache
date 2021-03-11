@@ -11,11 +11,11 @@ import (
 )
 
 type App struct {
-	cacheSrv *iface.CacheSrv
+	CacheSrv *iface.CacheSrv
 }
 
 func NewApp(cacheSrv *iface.CacheSrv) *App {
-	return &App{cacheSrv: cacheSrv}
+	return &App{CacheSrv: cacheSrv}
 }
 
 func (a *App) Start() {
@@ -28,7 +28,7 @@ func (a *App) Start() {
 
 	// 建立rpc server
 	var RpcServer = grpc.NewServer()
-	cache.RegisterCacheServer(RpcServer, a.cacheSrv)
+	cache.RegisterCacheServer(RpcServer, a.CacheSrv)
 	reflection.Register(RpcServer)
 	err = RpcServer.Serve(server)
 	if err != nil {

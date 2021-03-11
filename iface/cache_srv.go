@@ -21,22 +21,22 @@ func (c *CacheSrv) Get(ctx context.Context, request *cache.CacheGetRequest) (*ca
 	if err != nil {
 		return nil, err
 	}
-	//res, err := marshal(val)
-	//if err != nil {
-	//	return nil, err
-	//}
+	res, err := marshal(val)
+	if err != nil {
+		return nil, err
+	}
 
-	return &cache.CacheGetResponse{Value: val.(string)}, nil
+	return &cache.CacheGetResponse{Value: res}, nil
 }
 
 func (c *CacheSrv) Set(ctx context.Context, request *cache.CacheSetRequest) (*cache.CacheSetResponse, error) {
-	//var val interface{}
-	//err := unmarshal(request.GetValue(), val)
-	//if err != nil {
-	//	return nil, err
-	//}
+	var val interface{}
+	err := unmarshal(request.GetValue(), &val)
+	if err != nil {
+		return nil, err
+	}
 
-	c.cache.Set(request.GetKey(), request.GetValue())
+	c.cache.Set(request.GetKey(), val)
 
 	return &cache.CacheSetResponse{}, nil
 }
@@ -45,6 +45,7 @@ func marshal(v interface{}) ([]byte, error) {
 	b, err := json.Marshal(v)
 	return b, errors.WithStack(err)
 }
+
 func unmarshal(data []byte, v interface{}) error {
 	return errors.WithStack(json.Unmarshal(data, v))
 }
