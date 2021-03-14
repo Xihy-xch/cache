@@ -1,4 +1,4 @@
-package local_cache
+package cache
 
 import (
 	"hash/crc32"

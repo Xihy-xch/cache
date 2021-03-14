@@ -1,11 +1,11 @@
 package iface
 
 import (
+	"cache/local_cache"
+	cacheProto "cache/proto"
 	"context"
 	"encoding/json"
 	"github.com/pkg/errors"
-	"local-cache/local_cache"
-	cache "local-cache/proto"
 )
 
 type CacheSrv struct {
@@ -16,7 +16,7 @@ func NewCacheSrv(cache *local_cache.LRUCache) *CacheSrv {
 	return &CacheSrv{cache: cache}
 }
 
-func (c *CacheSrv) Get(ctx context.Context, request *cache.CacheGetRequest) (*cache.CacheGetResponse, error) {
+func (c *CacheSrv) Get(ctx context.Context, request *cacheProto.CacheGetRequest) (*cacheProto.CacheGetResponse, error) {
 	val, err := c.cache.Get(request.GetKey())
 	if err != nil {
 		return nil, err
@@ -26,10 +26,10 @@ func (c *CacheSrv) Get(ctx context.Context, request *cache.CacheGetRequest) (*ca
 		return nil, err
 	}
 
-	return &cache.CacheGetResponse{Value: res}, nil
+	return &cacheProto.CacheGetResponse{Value: res}, nil
 }
 
-func (c *CacheSrv) Set(ctx context.Context, request *cache.CacheSetRequest) (*cache.CacheSetResponse, error) {
+func (c *CacheSrv) Set(ctx context.Context, request *cacheProto.CacheSetRequest) (*cacheProto.CacheSetResponse, error) {
 	var val interface{}
 	err := unmarshal(request.GetValue(), &val)
 	if err != nil {
@@ -38,7 +38,7 @@ func (c *CacheSrv) Set(ctx context.Context, request *cache.CacheSetRequest) (*ca
 
 	c.cache.Set(request.GetKey(), val)
 
-	return &cache.CacheSetResponse{}, nil
+	return &cacheProto.CacheSetResponse{}, nil
 }
 
 func marshal(v interface{}) ([]byte, error) {

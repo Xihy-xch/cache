@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../local-cache/.idea/local-cache.iml" filepath="$PROJECT_DIR$/../local-cache/.idea/local-cache.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/cache.iml" filepath="$PROJECT_DIR$/.idea/cache.iml" />
     </modules>
   </component>
 </project>

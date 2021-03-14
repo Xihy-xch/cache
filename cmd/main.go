@@ -1,7 +1,7 @@
 package main
 
 import (
-	"local-cache/inject"
+	"cache/inject"
 	"log"
 )
 
@@ -15,7 +15,5 @@ func main() {
 		defer cleanup()
 	}
 
-	go app.Start()
+	app.Start()
 }
-
-

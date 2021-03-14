@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto;
 
-option go_package = ".;cache";
+option go_package = ".;cache_proto";
 
 service Cache {
     rpc Get (CacheGetRequest) returns (CacheGetResponse);

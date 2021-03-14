@@ -1,11 +1,11 @@
-package local_cache
+package cache
 
 import (
+	"cache/iface"
+	cache_proto "cache/proto"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"local-cache/iface"
-	cache "local-cache/proto"
 	"log"
 	"net"
 )
@@ -28,7 +28,7 @@ func (a *App) Start() {
 
 	// 建立rpc server
 	var RpcServer = grpc.NewServer()
-	cache.RegisterCacheServer(RpcServer, a.CacheSrv)
+	cache_proto.RegisterCacheServer(RpcServer, a.CacheSrv)
 	reflection.Register(RpcServer)
 	err = RpcServer.Serve(server)
 	if err != nil {
